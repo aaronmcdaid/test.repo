@@ -14,7 +14,7 @@ main = do
     _ <- runProcess node $ do
         -- get our own process id
         self <- getSelfPid
-        send self "hello"
-        hello <- expect :: Process String
-        liftIO $ putStrLn hello
+        send self (3.1415 ::        Double)
+        hello <- expect :: Process  Double
+        liftIO $ putStrLn (show [hello])
     return ()
