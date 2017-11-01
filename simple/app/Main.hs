@@ -15,15 +15,15 @@ import Network.Transport.TCP (createTransport, defaultTCPParameters)
 sampleTask :: () -> Process ()
 sampleTask _ = do
                         let onemessage message_count total_of_i_mi = do
-                                            m <- expectTimeout 100000 :: Process (Maybe String)
+                                            m <- expectTimeout 100000 :: Process (Maybe Double)
                                             case m of
                                                           -- Die immediately - throws a ProcessExitException with the given reason.
                                                           Nothing  -> do
                                                                             say $ "Bye: " ++ show (message_count, total_of_i_mi)
                                                                             return () -- die "nothing came back!"
-                                                          Just s -> do
+                                                          Just m_i -> do
                                                                             say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
-                                                                            onemessage (message_count+1) (total_of_i_mi+1.1)
+                                                                            onemessage (message_count+1) (total_of_i_mi+m_i)
                         onemessage 0 (0.0::Double)
                         -- liftIO (print "hi" >> threadDelay (t * 1000000))
                         -- say s
@@ -39,15 +39,15 @@ master backend slaves = do
    pid0<- spawn (slaves !! 0) $ $(mkClosure 'sampleTask) ()
    pid1<- spawn (slaves !! 1) $ $(mkClosure 'sampleTask) ()
    pid2<- spawn (slaves !! 2) $ $(mkClosure 'sampleTask) ()
-   send pid0 "Hello"
-   send pid1 "hEllo"
-   send pid2 "heLlo"
-   send pid0 "Hello"
-   send pid1 "hEllo"
-   send pid2 "heLlo"
-   send pid0 "third"
-   send pid1 "third"
-   send pid2 "third"
+   send pid0 (1.41::Double)
+   send pid1 (1.41::Double)
+   send pid2 (1.41::Double)
+   send pid0 (2.7::Double)
+   send pid1 (2.7::Double)
+   send pid2 (2.7::Double)
+   send pid0 (3.14::Double)
+   send pid1 (3.14::Double)
+   send pid2 (3.14::Double)
    -- Terminate the slaves when the master terminates (this is optional)
    terminateAllSlaves backend
 
