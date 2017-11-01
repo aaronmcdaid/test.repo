@@ -1,3 +1,27 @@
+import System.Environment (getArgs)
+import Control.Distributed.Process
+import Control.Distributed.Process.Node (initRemoteTable)
+import Control.Distributed.Process.Backend.SimpleLocalnet
+
+master :: Backend -> [NodeId] -> Process ()
+master backend slaves = do
+   -- Do something interesting with the slaves
+   liftIO . putStrLn $ "Slaves: " ++ show slaves
+   -- Terminate the slaves when the master terminates (this is optional)
+   terminateAllSlaves backend
+
+main :: IO ()
+main = do
+   args <- getArgs
+
+   case args of
+     ["master", host, port] -> do
+       backend <- initializeBackend host port initRemoteTable
+       startMaster backend (master backend)
+     ["slave", host, port] -> do
+       backend <- initializeBackend host port initRemoteTable
+       startSlave backend
+{-
 import Control.Concurrent (threadDelay)
 import Control.Monad (forever, when)
 import Control.Distributed.Process
@@ -111,3 +135,4 @@ main = do
 
     -- Without the following delay, the process sometimes exits before the messages are exchanged.
     liftIO $ threadDelay 2000000
+    -}
