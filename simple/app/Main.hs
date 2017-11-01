@@ -16,7 +16,7 @@ import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Node
 import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
-import System.IO(hFlush,stdout)
+import System.IO(hFlush,stdout,stderr,hPutStrLn)
 import System.Exit(exitSuccess,exitWith, ExitCode(ExitFailure))
 import System.CPUTime(getCPUTime)
 
@@ -29,9 +29,9 @@ sampleTask _ = do
                                 m <- expectTimeout 1000000 :: Process (Maybe Double)
                                 case m of
                                     Nothing  -> do    -- all done, print the tuple and end
-                                                    say ("bye: " ++ show (message_count, total_of_i_mi))
+                                                    say $ show (message_count, total_of_i_mi)
                                                     liftIO $ do
-                                                                print ("Bye: " ++ show (message_count, total_of_i_mi))
+                                                                hPutStrLn stderr (show (message_count, total_of_i_mi))
                                                                 hFlush stdout
                                     Just m_i -> do    -- add to the accumulators and recurse
                                                     -- say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
@@ -46,7 +46,7 @@ myRemoteTable = Main.__remoteTable initRemoteTable
 master :: Int -> Backend -> [NodeId] -> Process ()
 master seed backend slaves = do
     -- Do something interesting with the slaves
-    liftIO . putStrLn $ "Slaves: " ++ show slaves
+    liftIO $ hPutStrLn stderr ( "Slaves: " ++ show slaves )
     pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) ()) slaves
 
     let send_and_check_time g = do
@@ -60,7 +60,7 @@ master seed backend slaves = do
     send_and_check_time g
 
     -- Terminate the slaves when the master terminates
-    liftIO $ threadDelay (5000000)
+    liftIO $ threadDelay 5000000
     terminateAllSlaves backend
 
 main :: IO ()
@@ -80,17 +80,16 @@ main = do
     let arg_h = host args_kls
     let arg_p = port args_kls
 
-    print args_kls
-
     when  (   arg_k == -1
          || arg_l == -1
       ) $ do
             putStrLn "\n\n you must specify '--send-for SECONDS' and '--wait-for SECONDS'"
             exitWith (ExitFailure 1)
-    print args_kls
 
     case arg_mos of
      "master" -> do
+       --liftIO
+       threadDelay 500000 -- half a second to give the slaves a little time to wake up
        backend <- initializeBackend arg_h arg_p myRemoteTable
        startMaster backend (master arg_s backend)
      "slave" -> do
