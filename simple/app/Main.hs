@@ -47,13 +47,14 @@ sample = CommandLineArgs
          <> showDefault
          <> value (1337)
          <> metavar "INT" )
-replyBack :: (ProcessId, String) -> Process ()
-replyBack (sender, msg) = send sender ("<" ++ msg ++ ">")
+replyBack :: Int -> (ProcessId, String) -> Process ()
+replyBack i (sender, msg) = send sender ("<" ++ show i ++ ">" ++ msg)
 
 logMessage :: String -> Process ()
 logMessage msg = say $ "handling " ++ msg
 
 main :: IO ()
+
 main = do
   -- First, process the command line args
   let opts = info (helper <*> sample)
@@ -90,18 +91,14 @@ main = do
     -- Spawn another worker on the local node
     echoPid <- spawnLocal $ forever $ do
       -- Test our matches in order against each message in the queue
-      receiveWait [match logMessage, match replyBack]
+      receiveWait [match logMessage, match (replyBack 1)]
+    echoPid2<- spawnLocal $ forever $ do
+      -- Test our matches in order against each message in the queue
+      receiveWait [match logMessage, match (replyBack 2)]
 
-    -- The `say` function sends a message to a process registered as "logger".
-    -- By default, this process simply loops through its mailbox and sends
-    -- any received log message strings it finds to stderr.
-
-    say "send some messages!"
-    send echoPid "hello"
-    send echoPid "Hello"
     self <- getSelfPid
     send echoPid (self, "hello")
-    send echoPid (self, "Hello")
+    send echoPid2(self, "Hello")
     send echoPid (self, "Hello")
 
     -- `expectTimeout` waits for a message or times out after "delay"
