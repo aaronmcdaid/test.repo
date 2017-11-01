@@ -12,13 +12,19 @@ import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Node
 import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
+import System.IO(hFlush,stdout)
+
 sampleTask :: () -> Process ()
 sampleTask _ = do
+                        selfPid <- getSelfPid
                         let onemessage message_count total_of_i_mi = do
-                                m <- expectTimeout 100000 :: Process (Maybe Double)
+                                m <- expectTimeout 5000000 :: Process (Maybe Double)
                                 case m of
                                     Nothing  -> do    -- all done, print the tuple and end
-                                                    liftIO . print $ ("Bye: " ++ show (message_count, total_of_i_mi))
+                                                    say ("Bye: " ++ show (message_count, total_of_i_mi))
+                                                    liftIO $ do
+                                                                print ("Bye: " ++ show (message_count, total_of_i_mi))
+                                                                hFlush stdout
                                     Just m_i -> do    -- add to the accumulators and recurse
                                                     say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
                                                     onemessage (message_count+1) (total_of_i_mi+m_i)
@@ -47,6 +53,7 @@ master backend slaves = do
    send pid2 (3.14::Double)
 
    -- Terminate the slaves when the master terminates
+   liftIO $ threadDelay (5000000)
    terminateAllSlaves backend
 
 main :: IO ()
