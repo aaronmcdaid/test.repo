@@ -73,9 +73,17 @@ main = do
 
   -- Second, load up the nodelist
   nodes_txt_file <- readFile "nodes.txt"
-  print . map (\[h,p] -> (h,p)) . map (splitOn ":") . lines $ nodes_txt_file
+  let nodes = map (\[h,p] -> (h,p)) . map (splitOn ":") . lines $ nodes_txt_file
+  print nodes
+
+  nodes <- (flip mapM) nodes $ \(h,p) ->
+                do
+                        Right t <- createTransport h p defaultTCPParameters
+                        newLocalNode t initRemoteTable
+
 
   -- Now, starting making the nodes
+
   Right t <- createTransport "127.1.0.5" "10301" defaultTCPParameters
   node <- newLocalNode t initRemoteTable
   runProcess node $ do
