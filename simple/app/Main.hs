@@ -32,7 +32,7 @@ sampleTask waitfor = do
                                     Nothing  -> do    -- all done, print the tuple and end
                                                     -- say $ show (message_count, total_of_i_mi)
                                                     liftIO $ do
-                                                                print (show (message_count, total_of_i_mi))
+                                                                print (message_count, total_of_i_mi)
                                                                 hFlush stdout
                                     Just m_i -> do    -- add to the accumulators and recurse
                                                     -- say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
