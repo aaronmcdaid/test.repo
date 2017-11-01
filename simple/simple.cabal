@@ -26,6 +26,7 @@ executable simple-exe
   build-depends:       base
                      , simple
                      , distributed-process
+                     , distributed-process-simplelocalnet
                      , network-transport-tcp
                      , optparse-applicative
                      , split
