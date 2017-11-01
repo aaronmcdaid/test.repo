@@ -8,6 +8,8 @@ import Network.Transport.TCP (createTransport, defaultTCPParameters)
 import Options.Applicative
 import Data.Monoid ((<>))
 
+import Data.List.Split (splitOn)
+
 import System.Exit(exitWith, ExitCode(ExitFailure)) -- if args are missing
 
 {-
@@ -53,6 +55,7 @@ logMessage msg = say $ "handling " ++ msg
 
 main :: IO ()
 main = do
+  -- First, process the command line args
   let opts = info (helper <*> sample)
           ( fullDesc
          <> progDesc " -k INT and -l INT are necessary. -s INT defaults to 1337"
@@ -67,7 +70,13 @@ main = do
             putStrLn "\nUsage: simple-exe -k|--send-for INT -l|--wait-for INT [-s|--with-seed INT]"
             exitWith (ExitFailure 1)
   print args_kls
-  Right t <- createTransport "127.0.0.1" "10501" defaultTCPParameters
+
+  -- Second, load up the nodelist
+  nodes_txt_file <- readFile "nodes.txt"
+  print . map (\[h,p] -> (h,p)) . map (splitOn ":") . lines $ nodes_txt_file
+
+  -- Now, starting making the nodes
+  Right t <- createTransport "127.1.0.5" "10301" defaultTCPParameters
   node <- newLocalNode t initRemoteTable
   runProcess node $ do
     -- Spawn another worker on the local node
