@@ -10,7 +10,7 @@ import Control.Distributed.Process.Node (initRemoteTable)
 import Control.Distributed.Process.Backend.SimpleLocalnet
 
 import Control.Concurrent (threadDelay)
-import Control.Monad (forever,when)
+import Control.Monad (forever,when,replicateM_)
 import Control.Distributed.Process
 import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Node
@@ -18,6 +18,7 @@ import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
 import System.IO(hFlush,stdout)
 import System.Exit(exitSuccess,exitWith, ExitCode(ExitFailure))
+import System.CPUTime(getCPUTime)
 
 sampleTask :: () -> Process ()
 sampleTask _ = do
@@ -47,7 +48,9 @@ master backend slaves = do
     pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) ()) slaves
 
     let send_and_check_time = do
-            mapM ( (flip send) (0.001 :: Double) ) pids
+            replicateM_ 1000 $ mapM ( (flip send) (0.001 :: Double) ) pids
+            picos <- liftIO getCPUTime -- picoseconds 1,000,000,000,000
+            when (picos < 3000000000000) $ send_and_check_time
 
     send_and_check_time
     send_and_check_time
