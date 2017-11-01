@@ -15,18 +15,15 @@ import Network.Transport.TCP (createTransport, defaultTCPParameters)
 sampleTask :: () -> Process ()
 sampleTask _ = do
                         let onemessage message_count total_of_i_mi = do
-                                            m <- expectTimeout 100000 :: Process (Maybe Double)
-                                            case m of
-                                                          -- Die immediately - throws a ProcessExitException with the given reason.
-                                                          Nothing  -> do
-                                                                            say $ "Bye: " ++ show (message_count, total_of_i_mi)
-                                                                            return () -- die "nothing came back!"
-                                                          Just m_i -> do
-                                                                            say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
-                                                                            onemessage (message_count+1) (total_of_i_mi+m_i)
+                                m <- expectTimeout 100000 :: Process (Maybe Double)
+                                case m of
+                                    Nothing  -> do    -- all done, print the tuple and end
+                                                    liftIO . print $ ("Bye: " ++ show (message_count, total_of_i_mi))
+                                    Just m_i -> do    -- add to the accumulators and recurse
+                                                    say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
+                                                    onemessage (message_count+1) (total_of_i_mi+m_i)
                         onemessage 0 (0.0::Double)
                         -- liftIO (print "hi" >> threadDelay (t * 1000000))
-                        -- say s
 
 remotable ['sampleTask]
 myRemoteTable :: RemoteTable
