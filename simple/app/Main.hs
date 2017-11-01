@@ -53,8 +53,6 @@ master backend slaves = do
             when (picos < 3000000000000) $ send_and_check_time
 
     send_and_check_time
-    send_and_check_time
-    send_and_check_time
 
     -- Terminate the slaves when the master terminates
     liftIO $ threadDelay (5000000)
