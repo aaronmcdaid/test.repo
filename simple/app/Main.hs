@@ -20,6 +20,8 @@ import System.IO(hFlush,stdout)
 import System.Exit(exitSuccess,exitWith, ExitCode(ExitFailure))
 import System.CPUTime(getCPUTime)
 
+import System.Random
+
 sampleTask :: () -> Process ()
 sampleTask _ = do
                         selfPid <- getSelfPid
@@ -41,18 +43,21 @@ remotable ['sampleTask]
 myRemoteTable :: RemoteTable
 myRemoteTable = Main.__remoteTable initRemoteTable
 
-master :: Backend -> [NodeId] -> Process ()
-master backend slaves = do
+master :: Int -> Backend -> [NodeId] -> Process ()
+master seed backend slaves = do
     -- Do something interesting with the slaves
     liftIO . putStrLn $ "Slaves: " ++ show slaves
     pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) ()) slaves
 
-    let send_and_check_time = do
-            replicateM_ 100 $ mapM ( (flip send) (0.001 :: Double) ) pids
+    let send_and_check_time g = do
+            let (d,g') = random g -- store the new state to pass recursively below
+            mapM ( (flip send) (d :: Double) ) pids
             picos <- liftIO getCPUTime -- picoseconds 1,000,000,000,000
-            when (picos < 3000000000000) $ send_and_check_time
+            when (picos < 3000000000000) $ send_and_check_time g'
 
-    send_and_check_time
+    let g = mkStdGen seed
+
+    send_and_check_time g
 
     -- Terminate the slaves when the master terminates
     liftIO $ threadDelay (5000000)
@@ -68,9 +73,9 @@ main = do
          <> progDesc " -k INT and -l INT are necessary. -s INT defaults to 1337"
          <> header "???" )
     args_kls <- execParser opts
-    let arg_k = k args_kls
-    let arg_l = l args_kls
-    let arg_s = s args_kls
+    let arg_k = k args_kls --send-for
+    let arg_l = l args_kls --wait-for
+    let arg_s = s args_kls --with-seed
     let arg_mos = master_or_slave args_kls
     let arg_h = host args_kls
     let arg_p = port args_kls
@@ -87,7 +92,7 @@ main = do
     case arg_mos of
      "master" -> do
        backend <- initializeBackend arg_h arg_p myRemoteTable
-       startMaster backend (master backend)
+       startMaster backend (master arg_s backend)
      "slave" -> do
        backend <- initializeBackend arg_h arg_p myRemoteTable
        startSlave backend
