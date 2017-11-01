@@ -23,11 +23,11 @@ import Data.Time.Clock
 
 import System.Random
 
-sampleTask :: () -> Process ()
-sampleTask _ = do
+sampleTask :: Int -> Process ()
+sampleTask waitfor = do
                         selfPid <- getSelfPid
                         let onemessage message_count total_of_i_mi = do
-                                m <- expectTimeout 1000000 :: Process (Maybe Double)
+                                m <- expectTimeout (waitfor*1000000) :: Process (Maybe Double)
                                 case m of
                                     Nothing  -> do    -- all done, print the tuple and end
                                                     -- say $ show (message_count, total_of_i_mi)
@@ -36,7 +36,7 @@ sampleTask _ = do
                                                                 hFlush stdout
                                     Just m_i -> do    -- add to the accumulators and recurse
                                                     -- say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
-                                                    onemessage (message_count+1) (total_of_i_mi+m_i)
+                                                    onemessage (message_count+1) (total_of_i_mi + (message_count+1)*m_i)
                         onemessage 0 (0.0::Double)
 
 remotable ['sampleTask]
@@ -47,7 +47,7 @@ master :: Int -> Int -> Int -> Backend -> [NodeId] -> Process ()
 master seed sendfor waitfor backend slaves = do
     -- Do something interesting with the slaves
     liftIO $ hPutStrLn stderr ( "Slaves: " ++ show slaves )
-    pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) ()) slaves
+    pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) waitfor) slaves
 
     startTime <- liftIO getCurrentTime
 
