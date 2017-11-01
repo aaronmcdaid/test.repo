@@ -4,13 +4,13 @@
 import Options.Applicative
 import Data.Monoid ((<>))
 
-import System.Environment (getArgs)
+import Control.Monad (forever,when,replicateM_)
+
 import Control.Distributed.Process
 import Control.Distributed.Process.Node (initRemoteTable)
 import Control.Distributed.Process.Backend.SimpleLocalnet
 
 import Control.Concurrent (threadDelay)
-import Control.Monad (forever,when,replicateM_)
 import Control.Distributed.Process
 import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Node
@@ -20,16 +20,16 @@ import System.IO(hFlush,stdout,stderr,hPutStrLn)
 import System.Exit(exitSuccess,exitWith, ExitCode(ExitFailure))
 
 import Data.Time.Clock
-
 import System.Random
 
-sampleTask :: Int -> Process ()
-sampleTask waitfor = do
-                        selfPid <- getSelfPid
+
+listenAndAccumulate :: Int -> Process ()
+listenAndAccumulate waitfor = do
+                        -- define a recursive message-handler to accumulate the counters
                         let onemessage message_count total_of_i_mi = do
                                 m <- expectTimeout (waitfor*1000000) :: Process (Maybe Double)
                                 case m of
-                                    Nothing  -> do    -- all done, print the tuple and end
+                                    Nothing  -> do  -- all done, print the tuple and end
                                                     -- say $ show (message_count, total_of_i_mi)
                                                     liftIO $ do
                                                                 print (message_count, total_of_i_mi)
@@ -39,7 +39,7 @@ sampleTask waitfor = do
                                                     onemessage (message_count+1) (total_of_i_mi + (message_count+1)*m_i)
                         onemessage 0 (0.0::Double)
 
-remotable ['sampleTask]
+remotable ['listenAndAccumulate]
 myRemoteTable :: RemoteTable
 myRemoteTable = Main.__remoteTable initRemoteTable
 
@@ -47,10 +47,15 @@ master :: Int -> Int -> Int -> Backend -> [NodeId] -> Process ()
 master seed sendfor waitfor backend slaves = do
     -- Do something interesting with the slaves
     liftIO $ hPutStrLn stderr ( "Slaves: " ++ show slaves )
-    pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) waitfor) slaves
+
+    -- spawn the accumulator on each slave
+    pids <- mapM (\slave -> spawn slave $ $(mkClosure 'listenAndAccumulate) waitfor) slaves
 
     startTime <- liftIO getCurrentTime
 
+    -- another recursive action, sending a random number to each
+    -- slave, then checking the time, and restarting if 'send-for'
+    -- seconds has not yet elapsed
     let send_and_check_time g = do
             let (d,g') = random g -- store the new state to pass recursively below
             mapM ( (flip send) (d :: Double) ) pids
@@ -59,7 +64,6 @@ master seed sendfor waitfor backend slaves = do
             when ((diffUTCTime currentTime startTime) < fromIntegral sendfor) $ send_and_check_time g'
 
     let g = mkStdGen seed
-
     send_and_check_time g
 
     -- Terminate the slaves when the master terminates
@@ -69,6 +73,7 @@ master seed sendfor waitfor backend slaves = do
 main :: IO ()
 main = do
 
+    -- the masters and the slaves both come in here at first
 
     -- First, process the command line args
     let opts = info (helper <*> sample)
