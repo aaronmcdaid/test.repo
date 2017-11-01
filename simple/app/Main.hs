@@ -10,14 +10,14 @@ import Control.Distributed.Process.Node (initRemoteTable)
 import Control.Distributed.Process.Backend.SimpleLocalnet
 
 import Control.Concurrent (threadDelay)
-import Control.Monad (forever)
+import Control.Monad (forever,when)
 import Control.Distributed.Process
 import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Node
 import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
 import System.IO(hFlush,stdout)
-import System.Exit(exitSuccess)
+import System.Exit(exitSuccess,exitWith, ExitCode(ExitFailure))
 
 sampleTask :: () -> Process ()
 sampleTask _ = do
@@ -66,27 +66,25 @@ main = do
     let arg_k = k args_kls
     let arg_l = l args_kls
     let arg_s = s args_kls
+    let arg_mos = master_or_slave args_kls
+    let arg_h = host args_kls
+    let arg_p = port args_kls
 
     print args_kls
 
-    exitSuccess
-{-
     when  (   arg_k == -1
          || arg_l == -1
       ) $ do
-            putStrLn "\nUsage: simple-exe -k|--send-for INT -l|--wait-for INT [-s|--with-seed INT]"
+            putStrLn "\n\n you must specify '--send-for SECONDS' and '--wait-for SECONDS'"
             exitWith (ExitFailure 1)
     print args_kls
--}
 
-    args <- getArgs
-
-    case args of
-     ["master", host, port] -> do
-       backend <- initializeBackend host port myRemoteTable
+    case arg_mos of
+     "master" -> do
+       backend <- initializeBackend arg_h arg_p myRemoteTable
        startMaster backend (master backend)
-     ["slave", host, port] -> do
-       backend <- initializeBackend host port myRemoteTable
+     "slave" -> do
+       backend <- initializeBackend arg_h arg_p myRemoteTable
        startSlave backend
 
 data CommandLineArgs = CommandLineArgs
