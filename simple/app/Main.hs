@@ -12,8 +12,8 @@ import Control.Distributed.Process.Closure
 import Control.Distributed.Process.Node
 import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
-sampleTask :: (Int, String) -> Process ()
-sampleTask (t, s) = do
+sampleTask :: () -> Process ()
+sampleTask _ = do
                         let onemessage message_count total_of_i_mi = do
                                             m <- expectTimeout 100000 :: Process (Maybe String)
                                             case m of
@@ -25,8 +25,8 @@ sampleTask (t, s) = do
                                                                             say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
                                                                             onemessage (message_count+1) (total_of_i_mi+1.1)
                         onemessage 0 (0.0::Double)
-                        liftIO (print "hi" >> threadDelay (t * 1000000))
-                        say s
+                        -- liftIO (print "hi" >> threadDelay (t * 1000000))
+                        -- say s
 
 remotable ['sampleTask]
 myRemoteTable :: RemoteTable
@@ -36,9 +36,9 @@ master :: Backend -> [NodeId] -> Process ()
 master backend slaves = do
    -- Do something interesting with the slaves
    liftIO . putStrLn $ "Slaves: " ++ show slaves
-   pid0<- spawn (slaves !! 0) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
-   pid1<- spawn (slaves !! 1) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
-   pid2<- spawn (slaves !! 2) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
+   pid0<- spawn (slaves !! 0) $ $(mkClosure 'sampleTask) ()
+   pid1<- spawn (slaves !! 1) $ $(mkClosure 'sampleTask) ()
+   pid2<- spawn (slaves !! 2) $ $(mkClosure 'sampleTask) ()
    send pid0 "Hello"
    send pid1 "hEllo"
    send pid2 "heLlo"
