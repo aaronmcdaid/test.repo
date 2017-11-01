@@ -42,16 +42,20 @@ myRemoteTable = Main.__remoteTable initRemoteTable
 
 master :: Backend -> [NodeId] -> Process ()
 master backend slaves = do
-   -- Do something interesting with the slaves
-   liftIO . putStrLn $ "Slaves: " ++ show slaves
-   pids <- mapM (\slave -> spawn (slaves !! 2) $ $(mkClosure 'sampleTask) ()) slaves
+    -- Do something interesting with the slaves
+    liftIO . putStrLn $ "Slaves: " ++ show slaves
+    pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) ()) slaves
 
-   mapM ( (flip send) (0.001 :: Double) ) pids
-   mapM ( (flip send) (0.001 :: Double) ) pids
+    let send_and_check_time = do
+            mapM ( (flip send) (0.001 :: Double) ) pids
 
-   -- Terminate the slaves when the master terminates
-   liftIO $ threadDelay (5000000)
-   terminateAllSlaves backend
+    send_and_check_time
+    send_and_check_time
+    send_and_check_time
+
+    -- Terminate the slaves when the master terminates
+    liftIO $ threadDelay (5000000)
+    terminateAllSlaves backend
 
 main :: IO ()
 main = do
