@@ -14,16 +14,15 @@ import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
 sampleTask :: (Int, String) -> Process ()
 sampleTask (t, s) = do
-                        m <- expectTimeout 100000
-                        case m of
-                                      -- Die immediately - throws a ProcessExitException with the given reason.
-                                      Nothing  -> return () -- die "nothing came back!"
-                                      Just s -> say $ "got " ++ s ++ " back!"
-                        m <- expectTimeout 100000
-                        case m of
-                                      -- Die immediately - throws a ProcessExitException with the given reason.
-                                      Nothing  -> return () -- die "nothing came back!"
-                                      Just s -> say $ "Got " ++ s ++ " back!"
+                        let onemessage = do
+                                            m <- expectTimeout 100000
+                                            case m of
+                                                          -- Die immediately - throws a ProcessExitException with the given reason.
+                                                          Nothing  -> return () -- die "nothing came back!"
+                                                          Just s -> do
+                                                                            say $ "got " ++ s ++ " back!"
+                                                                            onemessage
+                        onemessage
                         liftIO (print "hi" >> threadDelay (t * 1000000))
                         say s
 
@@ -44,6 +43,9 @@ master backend slaves = do
    send pid0 "Hello"
    send pid1 "hEllo"
    send pid2 "heLlo"
+   send pid0 "third"
+   send pid1 "third"
+   send pid2 "third"
    -- Terminate the slaves when the master terminates (this is optional)
    terminateAllSlaves backend
 
