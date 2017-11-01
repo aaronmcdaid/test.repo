@@ -1,5 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- next two for options processing, https://stackoverflow.com/a/39049486/146041
+import Options.Applicative
+import Data.Monoid ((<>))
+
 import System.Environment (getArgs)
 import Control.Distributed.Process
 import Control.Distributed.Process.Node (initRemoteTable)
@@ -13,6 +17,7 @@ import Control.Distributed.Process.Node
 import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
 import System.IO(hFlush,stdout)
+import System.Exit(exitSuccess)
 
 sampleTask :: () -> Process ()
 sampleTask _ = do
@@ -50,12 +55,78 @@ master backend slaves = do
 
 main :: IO ()
 main = do
-   args <- getArgs
 
-   case args of
+
+    -- First, process the command line args
+    let opts = info (helper <*> sample)
+          ( fullDesc
+         <> progDesc " -k INT and -l INT are necessary. -s INT defaults to 1337"
+         <> header "???" )
+    args_kls <- execParser opts
+    let arg_k = k args_kls
+    let arg_l = l args_kls
+    let arg_s = s args_kls
+
+    print args_kls
+
+    exitSuccess
+{-
+    when  (   arg_k == -1
+         || arg_l == -1
+      ) $ do
+            putStrLn "\nUsage: simple-exe -k|--send-for INT -l|--wait-for INT [-s|--with-seed INT]"
+            exitWith (ExitFailure 1)
+    print args_kls
+-}
+
+    args <- getArgs
+
+    case args of
      ["master", host, port] -> do
        backend <- initializeBackend host port myRemoteTable
        startMaster backend (master backend)
      ["slave", host, port] -> do
        backend <- initializeBackend host port myRemoteTable
        startSlave backend
+
+data CommandLineArgs = CommandLineArgs
+    { master_or_slave :: String
+    , host :: String
+    , port :: String
+    , k :: Int -- send-for
+    , l :: Int -- wait-for
+    , s :: Int -- with-seed
+    } deriving Show
+
+sample :: Parser CommandLineArgs
+sample = CommandLineArgs
+     <$> argument str
+          ( help "is this node the master or slave?"
+         <> metavar "[master|slave]" )
+     <*> argument str
+          ( help "hostname"
+         <> metavar "STRING" )
+     <*> argument str
+          ( help "port"
+         <> metavar "STRING" )
+     <*> option auto
+          ( long "send-for"
+         <> short 'k'
+         <> help "how many seconds does the system send messages"
+         <> showDefault
+         <> value (-1)
+         <> metavar "INT" )
+     <*> option auto
+          ( long "wait-for"
+         <> short 'l'
+         <> help "the length of the grace period in seconds"
+         <> showDefault
+         <> value (-1)
+         <> metavar "INT" )
+     <*> option auto
+          ( long "with-seed"
+         <> short 's'
+         <> help "which defines seed for RNGs"
+         <> showDefault
+         <> value (1337)
+         <> metavar "INT" )
