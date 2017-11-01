@@ -42,15 +42,10 @@ master backend slaves = do
    pid0<- spawn (slaves !! 0) $ $(mkClosure 'sampleTask) ()
    pid1<- spawn (slaves !! 1) $ $(mkClosure 'sampleTask) ()
    pid2<- spawn (slaves !! 2) $ $(mkClosure 'sampleTask) ()
-   send pid0 (1.41::Double)
-   send pid1 (1.41::Double)
-   send pid2 (1.41::Double)
-   send pid0 (2.7::Double)
-   send pid1 (2.7::Double)
-   send pid2 (2.7::Double)
-   send pid0 (3.14::Double)
-   send pid1 (3.14::Double)
-   send pid2 (3.14::Double)
+   pids <- mapM (\slave -> spawn (slaves !! 2) $ $(mkClosure 'sampleTask) ()) slaves
+
+   mapM ( (flip send) (0.001 :: Double) ) pids
+   mapM ( (flip send) (0.001 :: Double) ) pids
 
    -- Terminate the slaves when the master terminates
    liftIO $ threadDelay (5000000)
