@@ -18,7 +18,8 @@ import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
 import System.IO(hFlush,stdout,stderr,hPutStrLn)
 import System.Exit(exitSuccess,exitWith, ExitCode(ExitFailure))
-import System.CPUTime(getCPUTime)
+
+import Data.Time.Clock
 
 import System.Random
 
@@ -29,38 +30,40 @@ sampleTask _ = do
                                 m <- expectTimeout 1000000 :: Process (Maybe Double)
                                 case m of
                                     Nothing  -> do    -- all done, print the tuple and end
-                                                    say $ show (message_count, total_of_i_mi)
+                                                    -- say $ show (message_count, total_of_i_mi)
                                                     liftIO $ do
-                                                                hPutStrLn stderr (show (message_count, total_of_i_mi))
+                                                                print (show (message_count, total_of_i_mi))
                                                                 hFlush stdout
                                     Just m_i -> do    -- add to the accumulators and recurse
                                                     -- say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
                                                     onemessage (message_count+1) (total_of_i_mi+m_i)
                         onemessage 0 (0.0::Double)
-                        -- liftIO (print "hi" >> threadDelay (t * 1000000))
 
 remotable ['sampleTask]
 myRemoteTable :: RemoteTable
 myRemoteTable = Main.__remoteTable initRemoteTable
 
-master :: Int -> Backend -> [NodeId] -> Process ()
-master seed backend slaves = do
+master :: Int -> Int -> Int -> Backend -> [NodeId] -> Process ()
+master seed sendfor waitfor backend slaves = do
     -- Do something interesting with the slaves
     liftIO $ hPutStrLn stderr ( "Slaves: " ++ show slaves )
     pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) ()) slaves
 
+    startTime <- liftIO getCurrentTime
+
     let send_and_check_time g = do
             let (d,g') = random g -- store the new state to pass recursively below
             mapM ( (flip send) (d :: Double) ) pids
-            picos <- liftIO getCPUTime -- picoseconds 1,000,000,000,000
-            when (picos < 3000000000000) $ send_and_check_time g'
+
+            currentTime <- liftIO getCurrentTime
+            when ((diffUTCTime currentTime startTime) < fromIntegral sendfor) $ send_and_check_time g'
 
     let g = mkStdGen seed
 
     send_and_check_time g
 
     -- Terminate the slaves when the master terminates
-    liftIO $ threadDelay 5000000
+    liftIO $ threadDelay (1000000*(waitfor+1))
     terminateAllSlaves backend
 
 main :: IO ()
@@ -86,12 +89,14 @@ main = do
             putStrLn "\n\n you must specify '--send-for SECONDS' and '--wait-for SECONDS'"
             exitWith (ExitFailure 1)
 
+    -- hPutStrLn stderr $ show args_kls
+
     case arg_mos of
      "master" -> do
        --liftIO
        threadDelay 500000 -- half a second to give the slaves a little time to wake up
        backend <- initializeBackend arg_h arg_p myRemoteTable
-       startMaster backend (master arg_s backend)
+       startMaster backend (master arg_s arg_k arg_l backend)
      "slave" -> do
        backend <- initializeBackend arg_h arg_p myRemoteTable
        startSlave backend
