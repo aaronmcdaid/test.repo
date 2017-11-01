@@ -18,15 +18,15 @@ sampleTask :: () -> Process ()
 sampleTask _ = do
                         selfPid <- getSelfPid
                         let onemessage message_count total_of_i_mi = do
-                                m <- expectTimeout 5000000 :: Process (Maybe Double)
+                                m <- expectTimeout 1000000 :: Process (Maybe Double)
                                 case m of
                                     Nothing  -> do    -- all done, print the tuple and end
-                                                    say ("Bye: " ++ show (message_count, total_of_i_mi))
+                                                    say ("bye: " ++ show (message_count, total_of_i_mi))
                                                     liftIO $ do
                                                                 print ("Bye: " ++ show (message_count, total_of_i_mi))
                                                                 hFlush stdout
                                     Just m_i -> do    -- add to the accumulators and recurse
-                                                    say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
+                                                    -- say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
                                                     onemessage (message_count+1) (total_of_i_mi+m_i)
                         onemessage 0 (0.0::Double)
                         -- liftIO (print "hi" >> threadDelay (t * 1000000))
@@ -39,9 +39,6 @@ master :: Backend -> [NodeId] -> Process ()
 master backend slaves = do
    -- Do something interesting with the slaves
    liftIO . putStrLn $ "Slaves: " ++ show slaves
-   pid0<- spawn (slaves !! 0) $ $(mkClosure 'sampleTask) ()
-   pid1<- spawn (slaves !! 1) $ $(mkClosure 'sampleTask) ()
-   pid2<- spawn (slaves !! 2) $ $(mkClosure 'sampleTask) ()
    pids <- mapM (\slave -> spawn (slaves !! 2) $ $(mkClosure 'sampleTask) ()) slaves
 
    mapM ( (flip send) (0.001 :: Double) ) pids
