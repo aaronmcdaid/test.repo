@@ -48,7 +48,7 @@ master backend slaves = do
     pids <- mapM (\slave -> spawn slave $ $(mkClosure 'sampleTask) ()) slaves
 
     let send_and_check_time = do
-            replicateM_ 1000 $ mapM ( (flip send) (0.001 :: Double) ) pids
+            replicateM_ 100 $ mapM ( (flip send) (0.001 :: Double) ) pids
             picos <- liftIO getCPUTime -- picoseconds 1,000,000,000,000
             when (picos < 3000000000000) $ send_and_check_time
 
