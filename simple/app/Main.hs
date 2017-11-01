@@ -13,7 +13,18 @@ import Control.Distributed.Process.Node
 import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
 sampleTask :: (Int, String) -> Process ()
-sampleTask (t, s) = liftIO (print "hi" >> threadDelay (t * 1000000)) >>
+sampleTask (t, s) = do
+                        m <- expectTimeout 100000
+                        case m of
+                                      -- Die immediately - throws a ProcessExitException with the given reason.
+                                      Nothing  -> return () -- die "nothing came back!"
+                                      Just s -> say $ "got " ++ s ++ " back!"
+                        m <- expectTimeout 100000
+                        case m of
+                                      -- Die immediately - throws a ProcessExitException with the given reason.
+                                      Nothing  -> return () -- die "nothing came back!"
+                                      Just s -> say $ "Got " ++ s ++ " back!"
+                        liftIO (print "hi" >> threadDelay (t * 1000000))
                         say s
 
 remotable ['sampleTask]
@@ -24,9 +35,15 @@ master :: Backend -> [NodeId] -> Process ()
 master backend slaves = do
    -- Do something interesting with the slaves
    liftIO . putStrLn $ "Slaves: " ++ show slaves
-   pid <- spawn (slaves !! 0) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
-   pid <- spawn (slaves !! 1) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
-   pid <- spawn (slaves !! 2) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
+   pid0<- spawn (slaves !! 0) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
+   pid1<- spawn (slaves !! 1) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
+   pid2<- spawn (slaves !! 2) $ $(mkClosure 'sampleTask) (1 :: Int, "using spawn")
+   send pid0 "Hello"
+   send pid1 "hEllo"
+   send pid2 "heLlo"
+   send pid0 "Hello"
+   send pid1 "hEllo"
+   send pid2 "heLlo"
    -- Terminate the slaves when the master terminates (this is optional)
    terminateAllSlaves backend
 

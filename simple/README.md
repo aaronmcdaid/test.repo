@@ -17,6 +17,15 @@ This program loads `nodes.txt` in the working directory for the list of nodes. I
     127.1.0.7:10701
 
 
+## printing
+
+The slave prints this:
+
+"That happens for some time, afterwards, during the grace period, each node prints out the following tuple:"
+
+... or sends it back to the master to print later
+
 ## network failure
 
 ...
+
