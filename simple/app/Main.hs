@@ -14,15 +14,17 @@ import Network.Transport.TCP (createTransport, defaultTCPParameters)
 
 sampleTask :: (Int, String) -> Process ()
 sampleTask (t, s) = do
-                        let onemessage = do
-                                            m <- expectTimeout 100000
+                        let onemessage message_count total_of_i_mi = do
+                                            m <- expectTimeout 100000 :: Process (Maybe String)
                                             case m of
                                                           -- Die immediately - throws a ProcessExitException with the given reason.
-                                                          Nothing  -> return () -- die "nothing came back!"
+                                                          Nothing  -> do
+                                                                            say $ "Bye: " ++ show (message_count, total_of_i_mi)
+                                                                            return () -- die "nothing came back!"
                                                           Just s -> do
-                                                                            say $ "got " ++ s ++ " back!"
-                                                                            onemessage
-                        onemessage
+                                                                            say $ "Got " ++ show (message_count, total_of_i_mi) ++ " back!"
+                                                                            onemessage (message_count+1) (total_of_i_mi+1.1)
+                        onemessage 0 (0.0::Double)
                         liftIO (print "hi" >> threadDelay (t * 1000000))
                         say s
 
